@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3B1F5C">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<title>Orçamento a Domicílio</title>
+<style>
+:root{--bg:#F7F4FA;--card:#fff;--ink:#25163A;--mute:#6E6280;--line:#E4DCEC;--plum:#3B1F5C;--soft:#EFE3FA;--wa:#17A04E;--err:#B3261E}
+@media (prefers-color-scheme:dark){:root{--bg:#171021;--card:#221733;--ink:#F1E8FA;--mute:#A99BBD;--line:#38294F;--plum:#C9A3F0;--soft:#2E2045;--wa:#22B85E;--err:#FF8A80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:env(safe-area-inset-top) 0 calc(76px + env(safe-area-inset-bottom))}
+main{max-width:520px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0 14px}
+h2{font-size:17px;margin:22px 0 8px}
+label{display:block;font-size:14px;color:var(--mute);margin:12px 0 4px}
+input[type=text],input[type=tel],input[type=number]{width:100%;font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:12px}
+input:focus,button:focus-visible{outline:3px solid var(--plum);outline-offset:1px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 14px}
+.row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .n{flex:1}.row .p{color:var(--mute);white-space:nowrap}
+.row input[type=checkbox]{width:22px;height:22px;accent-color:var(--plum)}
+.sw{display:flex;align-items:center;gap:10px;margin:14px 0 2px}
+.sw input{width:22px;height:22px;accent-color:var(--plum)}
+.total{background:var(--plum);color:#fff;border-radius:16px;padding:16px;margin:18px 0 12px}
+@media (prefers-color-scheme:dark){.total{color:#1B1028}}
+.total .big{font-size:36px;font-weight:700;letter-spacing:-.5px}
+.total .sub{opacity:.85;font-size:14px}
+button{font:inherit;border:0;border-radius:12px;padding:13px 16px;cursor:pointer;background:var(--soft);color:var(--ink);font-weight:600}
+button.wa{background:var(--wa);color:#fff;width:100%;font-size:17px}
+button.ghost{background:transparent;color:var(--mute);padding:8px}
+.btns{display:grid;gap:8px}
+.add{display:grid;grid-template-columns:1fr 110px auto;gap:8px;margin-top:10px}
+.warn{background:var(--soft);border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:12px}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border-radius:0;background:transparent;padding:16px;color:var(--mute)}
+nav button[aria-current=true]{color:var(--plum);box-shadow:inset 0 3px 0 var(--plum)}
+.hide{display:none}
+details{margin-top:14px}
+summary{cursor:pointer;font-weight:600;color:var(--plum);padding:6px 0}
+.res{background:var(--soft);border-radius:12px;padding:10px 12px;font-size:14px;margin-top:10px}
+.err{color:var(--err);font-size:14px}
+</style>
+</head>
+<body>
+<main>
+<section id="tOrc">
+  <h1>Novo orçamento</h1>
+  <div id="aviso"></div>
+  <label for="nome">Nome da cliente</label>
+  <input id="nome" type="text" autocomplete="off">
+  <label for="tel">WhatsApp da cliente (com DDD)</label>
+  <input id="tel" type="tel" inputmode="tel" placeholder="13 99999-9999">
+  <label for="km">Distância pelo Google Maps (km, só ida)</label>
+  <input id="km" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0">
+  <div class="sw"><input id="iv" type="checkbox"><label for="iv" style="margin:0;color:var(--ink)">Cobrar ida e volta</label></div>
+  <h2>Serviços</h2>
+  <div class="card" id="lista"></div>
+  <div class="total" aria-live="polite">
+    <div class="sub" id="tServ"></div>
+    <div class="sub" id="tDesl"></div>
+    <div class="big" id="tTot">R$ 0,00</div>
+  </div>
+  <div class="btns">
+    <button class="wa" id="enviar">Enviar no WhatsApp</button>
+    <button id="copiar">Copiar mensagem</button>
+    <button class="ghost" id="limpar">Limpar orçamento</button>
+  </div>
+</section>
+
+<section id="tAj" class="hide">
+  <h1>Ajustes</h1>
+  <label for="seuNome">Seu nome (aparece na mensagem)</label>
+  <input id="seuNome" type="text">
+  <label for="kmValor">Valor por km rodado (R$)</label>
+  <input id="kmValor" type="number" inputmode="decimal" min="0" step="0.01">
+  <details>
+    <summary>Calcular o custo do meu km</summary>
+    <label for="c_comb">Preço do combustível (R$ por litro)</label>
+    <input id="c_comb" type="number" inputmode="decimal" min="0" step="0.01">
+    <label for="c_cons">Consumo do carro (km por litro)</label>
+    <input id="c_cons" type="number" inputmode="decimal" min="0" step="0.1">
+    <label for="c_outros">Outros custos do carro por mês (R$): revisão, pneus, seguro, IPVA e perda de valor do carro</label>
+    <input id="c_outros" type="number" inputmode="decimal" min="0" step="1">
+    <label for="c_kmMes">Km que o carro roda por mês (pessoal + trabalho)</label>
+    <input id="c_kmMes" type="number" inputmode="decimal" min="0" step="1">
+    <label for="c_margem">Margem sobre o custo (%), pelo seu tempo e lucro</label>
+    <input id="c_margem" type="number" inputmode="decimal" min="0" step="1">
+    <div class="res" id="custoRes" aria-live="polite"></div>
+    <button id="usarCusto" style="width:100%;margin-top:10px">Usar o valor sugerido como valor do km</button>
+  </details>
+  <div class="sw"><input id="ivPadrao" type="checkbox"><label for="ivPadrao" style="margin:0;color:var(--ink)">Ida e volta ligado por padrão</label></div>
+  <h2>Meus serviços</h2>
+  <div class="card" id="listaAj"></div>
+  <div class="add">
+    <input id="nS" type="text" placeholder="Nome do serviço" aria-label="Nome do serviço">
+    <input id="pS" type="number" inputmode="decimal" min="0" step="0.01" placeholder="R$" aria-label="Preço">
+    <button id="addS">Adicionar</button>
+  </div>
+  <p class="err" id="erroS"></p>
+  <h2>Backup</h2>
+  <p style="color:var(--mute);font-size:14px;margin:0 0 8px">Seus dados ficam só neste celular. Exporte de vez em quando e guarde o arquivo no Drive ou mande para você mesma no WhatsApp.</p>
+  <div class="btns">
+    <button id="exp">Exportar backup</button>
+    <button id="imp">Importar backup</button>
+    <input id="file" type="file" accept="application/json,.json" class="hide">
+  </div>
+  <p id="bkInfo" style="color:var(--mute);font-size:14px"></p>
+</section>
+</main>
+<nav>
+  <button id="nOrc" aria-current="true">Orçamento</button>
+  <button id="nAj">Ajustes</button>
+</nav>
+
+<script>
+const KEY='orcamento_domicilio_v1';
+const $=id=>document.getElementById(id);
+const brl=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const num=v=>{const n=parseFloat(String(v).replace(',','.'));return isFinite(n)&&n>=0?n:0};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let S={seuNome:'',kmValor:0,ivPadrao:true,servicos:[],ultimoBackup:null,custo:{comb:0,cons:0,outros:0,kmMes:0,margem:0}};
+try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+let sel=new Set();
+$('iv').checked=S.ivPadrao;
+
+function calc(){
+  const servs=S.servicos.filter(s=>sel.has(s.id));
+  const sub=servs.reduce((a,s)=>a+s.preco,0);
+  const kmIda=num($('km').value), kmTot=kmIda*($('iv').checked?2:1);
+  const desl=kmTot*S.kmValor;
+  return {servs,sub,kmIda,kmTot,desl,total:sub+desl};
+}
+function msg(){
+  const c=calc(), nome=$('nome').value.trim();
+  let m=(nome?`Olá, ${nome}! `:'Olá! ')+'Segue o orçamento do atendimento a domicílio:\n\n';
+  c.servs.forEach(s=>m+=`• ${s.nome}: ${brl(s.preco)}\n`);
+  if(c.kmIda>0){
+    const km=c.kmTot.toLocaleString('pt-BR',{maximumFractionDigits:1});
+    m+=`• Deslocamento (${km} km${$('iv').checked?', ida e volta':''}): ${brl(c.desl)}\n`;
+  }
+  m+=`\n*Total: ${brl(c.total)}*`;
+  if(S.seuNome)m+=`\n\n${S.seuNome}`;
+  return m;
+}
+function render(){
+  const l=$('lista');
+  l.innerHTML=S.servicos.length?'':'<p style="color:var(--mute)">Nenhum serviço cadastrado. Adicione em Ajustes.</p>';
+  S.servicos.forEach(s=>{
+    const r=document.createElement('label');r.className='row';r.style.cssText='margin:0;color:var(--ink);font-size:16px';
+    r.innerHTML=`<input type="checkbox" ${sel.has(s.id)?'checked':''}><span class="n">${esc(s.nome)}</span><span class="p">${brl(s.preco)}</span>`;
+    r.querySelector('input').onchange=e=>{e.target.checked?sel.add(s.id):sel.delete(s.id);totals()};
+    l.appendChild(r);
+  });
+  const a=$('listaAj');
+  a.innerHTML=S.servicos.length?'':'<p style="color:var(--mute)">Nenhum serviço ainda.</p>';
+  S.servicos.forEach(s=>{
+    const r=document.createElement('div');r.className='row';
+    r.innerHTML=`<span class="n">${esc(s.nome)}</span><span class="p">${brl(s.preco)}</span><button class="ghost" aria-label="Remover ${esc(s.nome)}">Remover</button>`;
+    r.querySelector('button').onclick=()=>{S.servicos=S.servicos.filter(x=>x.id!==s.id);sel.delete(s.id);save();render();totals()};
+    a.appendChild(r);
+  });
+  totals();aviso();
+}
+function totals(){
+  const c=calc();
+  $('tServ').textContent='Serviços: '+brl(c.sub);
+  $('tDesl').textContent=(c.kmIda>0&&S.kmValor===0)?'Defina o valor do km em Ajustes':'Deslocamento: '+brl(c.desl);
+  $('tTot').textContent=brl(c.total);
+}
+function aviso(){
+  const d=S.ultimoBackup?Math.floor((Date.now()-S.ultimoBackup)/864e5):null;
+  $('aviso').innerHTML=(d===null||d>=30)?`<div class="warn">${d===null?'Você ainda não fez backup.':'Último backup há '+d+' dias.'} Vá em Ajustes e exporte seus dados.</div>`:'';
+  $('bkInfo').textContent=d===null?'Nenhum backup feito ainda.':'Último backup: '+new Date(S.ultimoBackup).toLocaleDateString('pt-BR');
+}
+['km','nome'].forEach(i=>$(i).oninput=totals);
+$('iv').onchange=totals;
+$('enviar').onclick=()=>{
+  let t=$('tel').value.replace(/\D/g,'');
+  if(t&&t.length<=11)t='55'+t;
+  window.open(`https://wa.me/${t}?text=${encodeURIComponent(msg())}`,'_blank');
+};
+$('copiar').onclick=async()=>{
+  try{await navigator.clipboard.writeText(msg());$('copiar').textContent='Copiado!'}catch(e){$('copiar').textContent='Não foi possível copiar'}
+  setTimeout(()=>$('copiar').textContent='Copiar mensagem',1800);
+};
+$('limpar').onclick=()=>{sel.clear();['nome','tel','km'].forEach(i=>$(i).value='');$('iv').checked=S.ivPadrao;render()};
+
+$('seuNome').value=S.seuNome;$('kmValor').value=S.kmValor||'';$('ivPadrao').checked=S.ivPadrao;
+$('seuNome').oninput=e=>{S.seuNome=e.target.value;save()};
+$('kmValor').oninput=e=>{S.kmValor=num(e.target.value);save();totals()};
+$('ivPadrao').onchange=e=>{S.ivPadrao=e.target.checked;save()};
+$('addS').onclick=()=>{
+  const nome=$('nS').value.trim(), preco=num($('pS').value);
+  if(!nome||!$('pS').value){$('erroS').textContent='Informe o nome e o preço do serviço.';return}
+  $('erroS').textContent='';
+  S.servicos.push({id:Date.now().toString(36),nome,preco});
+  $('nS').value='';$('pS').value='';save();render();
+};
+$('exp').onclick=()=>{
+  S.ultimoBackup=Date.now();save();
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));
+  a.download='backup-orcamento-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);aviso();
+};
+$('imp').onclick=()=>$('file').click();
+$('file').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(!Array.isArray(d.servicos))throw 0;
+      S=Object.assign({seuNome:'',kmValor:0,ivPadrao:true,servicos:[],ultimoBackup:null,custo:{comb:0,cons:0,outros:0,kmMes:0,margem:0}},d);
+      save();sel.clear();
+      $('seuNome').value=S.seuNome;$('kmValor').value=S.kmValor||'';$('ivPadrao').checked=S.ivPadrao;$('iv').checked=S.ivPadrao;
+      initCusto();render();alert('Backup importado.');
+    }catch(x){alert('Arquivo inválido. Escolha um backup exportado por este app.')}
+    e.target.value='';
+  };
+  r.readAsText(f);
+};
+function aba(a){
+  $('tOrc').classList.toggle('hide',a!=='o');$('tAj').classList.toggle('hide',a!=='a');
+  $('nOrc').setAttribute('aria-current',a==='o');$('nAj').setAttribute('aria-current',a==='a');
+  scrollTo(0,0);
+}
+$('nOrc').onclick=()=>aba('o');$('nAj').onclick=()=>aba('a');
+const CF=['comb','cons','outros','kmMes','margem'];
+function initCusto(){CF.forEach(k=>{$('c_'+k).value=S.custo[k]||''});custoView()}
+function custoKm(){const c=S.custo;const fuel=c.cons>0?c.comb/c.cons:0;const out=c.kmMes>0?c.outros/c.kmMes:0;const base=fuel+out;return{fuel,out,base,sug:base*(1+c.margem/100)}}
+function custoView(){
+  const r=custoKm();
+  $('custoRes').innerHTML=r.base>0?`Combustível: ${brl(r.fuel)} por km<br>Outros custos do carro: ${brl(r.out)} por km<br>Custo total: <b>${brl(r.base)} por km</b><br>Valor sugerido com a sua margem: <b>${brl(r.sug)} por km</b>`:'Preencha os campos para ver o custo do seu km.';
+  $('usarCusto').disabled=!(r.sug>0);
+}
+CF.forEach(k=>$('c_'+k).oninput=e=>{S.custo[k]=num(e.target.value);save();custoView()});
+$('usarCusto').onclick=()=>{const v=Math.round(custoKm().sug*100)/100;S.kmValor=v;$('kmValor').value=v;save();totals()};
+initCusto();
+render();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "Orçamento a Domicílio",
+  "short_name": "Orçamento",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F7F4FA",
+  "theme_color": "#3B1F5C",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
